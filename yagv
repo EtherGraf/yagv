@@ -10,6 +10,8 @@ pyglet.options['debug_gl'] = False
 
 from pyglet import clock
 from pyglet.gl import *
+from pyglet.graphics.shader import Shader, ShaderProgram
+from pyglet.math import Vec3,Mat4
 from pyglet.window import key
 from pyglet.window import mouse
 
@@ -22,6 +24,43 @@ class App(object):
 		self.RX = 0.0
 		self.RZ = 0.0
 		self.zoom = 1.0
+		
+		# =========================
+		# Shader
+		# =========================
+
+		vertex_source = """
+		#version 330 core
+		in vec3 position;
+		in vec4 color;
+
+		out vec4 v_color;
+
+		uniform mat4 mvp;
+
+		void main()
+		{
+			v_color = color;
+			gl_Position = mvp * vec4(position, 1.0);
+		}
+		"""
+
+		fragment_source = """
+		#version 330 core
+		in vec4 v_color;
+		out vec4 fragColor;
+
+		void main()
+		{
+			fragColor = vec4(v_color);
+		}
+		"""
+
+		self.program = ShaderProgram(
+			Shader(vertex_source, "vertex"),
+			Shader(fragment_source, "fragment")
+		)	
+		
 	
 	def main(self):
 		
@@ -49,6 +88,8 @@ class App(object):
 		# debug: log all events
 		# self.window.push_handlers(pyglet.window.event.WindowEventLogger())
 		
+		# generate graphics AFTER window generation
+		self.generateGraphics()
 
 		pyglet.app.run()
 
@@ -188,24 +229,29 @@ class App(object):
 		
 		for layer_idx in range(len(self.vertices)):
 			nb_layer_vertices = int(len(self.vertices[layer_idx])/3)
-			vertex_list = pyglet.graphics.vertex_list(nb_layer_vertices,
-				('v3f/static', self.vertices[layer_idx]),
-				('c4B/static', self.vertex_colors[0][layer_idx])
+			vertex_list = self.program.vertex_list(nb_layer_vertices,
+				GL_LINES,
+				position = ('f', self.vertices[layer_idx]),
+				color = ('Bn', self.vertex_colors[0][layer_idx])
 			)
 			self.graphics_old.append(vertex_list)
 			
-			vertex_list = pyglet.graphics.vertex_list(nb_layer_vertices,
-				('v3f/static', self.vertices[layer_idx]),
-				('c4B/static', self.vertex_colors[1][layer_idx])
+			vertex_list = self.program.vertex_list(nb_layer_vertices,
+				GL_LINES,
+				position = ('f', self.vertices[layer_idx]),
+				color = ('Bn', self.vertex_colors[1][layer_idx])
 			)
 			self.graphics_current.append(vertex_list)
 			
-			vertex_list = pyglet.graphics.vertex_list(nb_layer_vertices,
-				('v3f/static', self.vertices[layer_idx]),
-				('c4B/static', self.vertex_colors[2][layer_idx])
+			vertex_list = self.program.vertex_list(nb_layer_vertices,
+				GL_LINES,
+				position = ('f', self.vertices[layer_idx]),
+				color = ('Bn', self.vertex_colors[2][layer_idx])
 			)
 			self.graphics_limbo.append(vertex_list)
-		#	print nb_layer_vertices, len(self.vertices[layer_idx]), len(self.colors[0][layer_idx])
+			#print(layer_idx, nb_layer_vertices, len(self.vertices[layer_idx]), len(self.vertex_colors[0][layer_idx]))
+
+
 		
 		t2 = time.time()
 		print("end generateGraphics in %0.3f ms" % ((t2-t1)*1000.0, ))
@@ -276,6 +322,30 @@ class MyWindow(pyglet.window.Window):
 		pyglet.window.Window.__init__(self, **kwargs)
 		self.app = app
 		self.hud()
+
+		# Axes
+		axes_pos = [
+			0,0,0, self.app.model.bbox.xmax,0,0,
+			0,0,0, 0,self.app.model.bbox.ymax,0,
+			0,0,0, 0,0,self.app.model.bbox.zmax
+		]
+
+		axes_col = [
+			1,0,0,1, 1,0,0,1,
+			0,1,0,1, 0,1,0,1,
+			0,0,1,1, 0,0,1,1
+		]
+
+		self.axes = self.app.program.vertex_list(
+			6,
+			GL_LINES,
+			position=('f', axes_pos),
+			color=('f', axes_col)
+		)
+		
+		
+		
+		self.rotation_matrix = Mat4()  # Start als Identität
 	
 	# hud info
 	def hud(self):
@@ -403,34 +473,30 @@ class MyWindow(pyglet.window.Window):
 		#print 'mouse scroll:', `x, y, dx, dy`, `z, self.app.zoom`
 
 	def on_draw(self):
-		#print "draw"
+		#print("draw")
 		
 		# Clear buffers
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		
-		# setup projection
-		glMatrixMode(GL_PROJECTION)
-		glLoadIdentity()
-		gluPerspective(65, self.width / float(self.height), 0.1, 1000)
-		
+		projection = Mat4.perspective_projection(
+			self.width / self.height, 
+			fov = 65,
+			z_near = 0.1, 
+			z_far = 10000.0
+		)
+
 		# setup camera
-		glMatrixMode(GL_MODELVIEW)
-		glLoadIdentity()
-		gluLookAt(0,1.5,2,0,0,0,0,1,0)
+		view = Mat4.look_at(Vec3(0,1.5,2),Vec3(0,0,0),Vec3(0,1,0))
 		
 		# enable alpha blending
 		glEnable(GL_BLEND)
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 		
 		# rotate axes to match reprap style
-		glRotated(-90, 1,0,0)
+		reprap = Mat4.from_rotation(math.radians(-90), (1,0,0))
 		# user rotate model
-		glRotated(-self.app.RX, 1,0,0)
-		glRotated(self.app.RZ, 0,0,1)
-		
-		# Todo check this
-		glTranslated(0,0,-0.5)
-		
+		rot_x = Mat4.from_rotation(math.radians(-self.app.RX), (1, 0, 0))  
+		rot_z = Mat4.from_rotation(math.radians(self.app.RZ), (0,0,1))
 		# fit & user zoom model
 		max_width = max(
 			self.app.model.bbox.dx(),
@@ -438,42 +504,34 @@ class MyWindow(pyglet.window.Window):
 			self.app.model.bbox.dz()
 		)
 		scale = self.app.zoom / max_width
-		glScaled(scale, scale, scale)
+		scale = Mat4.from_scale((scale, scale, scale))
+		trans = Mat4.from_translation((-self.app.model.bbox.cx(), -self.app.model.bbox.cy(), -self.app.model.bbox.cz()))
+		model = reprap @ rot_x @ rot_z @ scale @ trans
 		
-		glTranslated(-self.app.model.bbox.cx(), -self.app.model.bbox.cy(), -self.app.model.bbox.cz())
+		mvp = projection @ view @ model
+
+		with self.app.program:
+			self.app.program['mvp'] = mvp
+			
+			#draw axes
+			glLineWidth(3)
+			self.axes.draw(GL_LINES)
+
+			glLineWidth(1)
+			# Draw the model layers
+			# lower layers
+			for graphic in self.app.graphics_old[0:self.app.layerIdx]:
+				graphic.draw(GL_LINES)
 		
-		
-		
-		# draw axes
-		glBegin(GL_LINES)
-		glColor3f(1,0,0)
-		glVertex3f(0,0,0); glVertex3f(1,0,0); glVertex3f(1,0,0); glVertex3f(1,0.1,0)
-		glVertex3f(1,0,0); glVertex3f(self.app.model.bbox.xmax,0,0)
-		glColor3f(0,1,0)
-		glVertex3f(0,0,0); glVertex3f(0,1,0); glVertex3f(0,1,0); glVertex3f(0,1,0.1)
-		glVertex3f(0,1,0); glVertex3f(0,self.app.model.bbox.ymax,0)
-		glColor3f(0,0,1)
-		glVertex3f(0,0,0); glVertex3f(0,0,1); glVertex3f(0,0,1); glVertex3f(0.1,0,1)
-		glVertex3f(0,0,1); glVertex3f(0,0,self.app.model.bbox.zmax)
-		glEnd()
-		
-		
-		glLineWidth(1)
-		# Draw the model layers
-		# lower layers
-		for graphic in self.app.graphics_old[0:self.app.layerIdx]:
+			glLineWidth(2)
+			# highlighted layer
+			graphic = self.app.graphics_current[self.app.layerIdx]
 			graphic.draw(GL_LINES)
-		
-		glLineWidth(2)
-		
-		# highlighted layer
-		graphic = self.app.graphics_current[self.app.layerIdx]
-		graphic.draw(GL_LINES)
-		
-		glLineWidth(1)
-		# limbo layers
-		for graphic in self.app.graphics_limbo[self.app.layerIdx+1:]:
-			graphic.draw(GL_LINES)
+			
+			glLineWidth(1)
+			# limbo layers
+			for graphic in self.app.graphics_limbo[self.app.layerIdx+1:]:
+				graphic.draw(GL_LINES)
 		
 		
 		# disable depth for HUD
@@ -482,13 +540,10 @@ class MyWindow(pyglet.window.Window):
 		
 		#Set your camera up for 2d, draw 2d scene
 		
-		glMatrixMode(GL_PROJECTION)
-		glLoadIdentity();
-		glOrtho(0, self.width, 0, self.height, -1, 1)
-		glMatrixMode(GL_MODELVIEW)
-		glLoadIdentity()
+		self.projection = Mat4.orthogonal_projection(0, self.width, 0, self.height, -1, 1)
+		self.view = Mat4()
 		
-		self.fpsLabel.text = "%d fps"%int(round(pyglet.clock.get_fps()))
+		self.fpsLabel.text = "%d fps"%int(round(pyglet.clock.get_frequency()))
 		
 		for label in self.blLabels:
 			label.draw()
