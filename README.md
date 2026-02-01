@@ -25,6 +25,7 @@ A fast 3D Gcode Viewer for Reprap-style 3D printers, in Python and OpenGL/pyglet
   
 ## Supported Platforms
 - Ubuntu Linux 20.04 LTS [confirmed]
+- Debian 13 Trixie
 - Expected to work in any Linux, Windows or macOS
 
 ## Installation
