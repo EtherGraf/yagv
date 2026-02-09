@@ -21,6 +21,5 @@ setuptools.setup(
     install_requires=[
         'setuptools',
         'pyglet>=2'
-        'numpy'
     ]
 )
