@@ -3,6 +3,7 @@
 YAGV_VERSION = "0.5.8"        # -- check Makefile and setup.py too
 
 import sys
+import argparse
 import pyglet
 import math
 
@@ -55,7 +56,7 @@ class App:
 		self.PY = 0.0
 		self.zoom = 1.0
 		self.conf = { }
-		self.conf['bed_size'] = [ 200, 200 ]
+		self.conf['bed_size'] = ( 200, 200 )
 
 		# =========================
 		# Shader
@@ -97,39 +98,32 @@ class App:
 		
 		#### MAIN CODE ####
 
-		path = ''
+		def parse_size_arg(arg: str) -> tuple:
+			""" Parse width and height from command argument. """
+			return tuple(map(int, arg.split('x')))
 
-		i = 1
-		while(i<len(sys.argv)):
-			m = [ ]
-			if preg_match(r'^--([\w\-]+)=(.*)$',sys.argv[i],m):
-				m[1] = m[1].replace('-','_')
-				self.conf[m[1]] = m[2]
-			elif preg_match(r'^--([\w\-]+)$',sys.argv[i],m):
-				m[1] = m[1].replace('-','_')
-				self.conf[m[1]] = 1
-			else:
-		 		path = sys.argv[i]
-			i += 1
+		parser = argparse.ArgumentParser(
+			prog='yagv',
+			description="Yet Another GCode Viewer v%s" % YAGV_VERSION,
+			epilog='Have fun!')
+		parser.add_argument(metavar='filename', dest='path', default = 'data/hana_swimsuit_fv_solid_v1.gcode')
+		parser.add_argument('-d', '--dark', help='enable dark mode', 	action='store_true')
+		parser.add_argument('-b', '--bed-size', help='set bed size (e.g. 200x240)', type=parse_size_arg, default=(200,200))
 
-		if 'help' in self.conf and self.conf['help']:
-			print("""USAGE yagv %s: [<opts>] file.gcode
-   options:
-      --help               display this message
-      --dark               enable dark mode
-      --bed-size=<w>x<h>   set bed size (e.g. 200x240)
-""" % YAGV_VERSION)
-			sys.exit(0)
-		if 'dark' in self.conf and self.conf['dark']:
+		args = parser.parse_args()
+
+		if args.dark:
 			colorMap['background'] = [ 0,0,0, 1 ]
 			colorMap['grid'] = [ 1,1,1, 0.1 ]
 			colorMap['text'] = [ 1,1,1, 0.7 ]
 
-		if type(self.conf['bed_size'])==str:
-			self.conf['bed_size'] = list(map(lambda x: int(x),self.conf['bed_size'].split('x')))
+		if args.bed_size:
+			self.conf['bed_size'] = args.bed_size
 			print(self.conf['bed_size'])
 
-		if len(path)==0:
+		if args.path:
+			path = args.path
+		else:
 			script_path = os.path.realpath(__file__)
 			script_dir = os.path.dirname(script_path)
 			path = os.path.join(script_dir, "data/hana_swimsuit_fv_solid_v1.gcode")
