@@ -490,13 +490,6 @@ class App:
 		self.panningStartY = None
 
 
-def glLine(p1,p2,c):
-	glBegin(GL_LINES)
-	glColor4f(c[0],c[1],c[2],c[3])
-	glVertex3f(p1[0],p1[1],p1[2])
-	glVertex3f(p2[0],p2[1],p2[2])
-	glEnd()
-	
 class MyWindow(pyglet.window.Window):
 
 	# constructor
