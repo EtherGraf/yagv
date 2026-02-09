@@ -509,7 +509,7 @@ class MyWindow(pyglet.window.Window):
 		self.trLabels = []
 
 		c_texti = list(map(lambda x: int(x*255), colorMap['text']))
-		#self.brLabels.append(pyglet.text.Label("yagv "+YAGV_VERSION,font_size=10,color=c_texti,anchor_x='right', anchor_y='bottom'))
+		self.brLabels.append(pyglet.text.Label("yagv "+YAGV_VERSION,font_size=10,color=c_texti,anchor_x='right', anchor_y='bottom'))
       
 		# help
 		self.helpText = [
@@ -532,7 +532,7 @@ class MyWindow(pyglet.window.Window):
 										font_size=10,color=c_texti,
 										anchor_y='top')
 		self.tlLabels.append(self.statsLabel)
-		#self.tlLabels.append(self.fpsLabel)
+		self.tlLabels.append(self.fpsLabel)
 
 		# status
 		## current Layer
