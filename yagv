@@ -106,24 +106,24 @@ class App:
 			prog='yagv',
 			description="Yet Another GCode Viewer v%s" % YAGV_VERSION,
 			epilog='Have fun!')
-		parser.add_argument(metavar='filename', dest='path', default = 'data/hana_swimsuit_fv_solid_v1.gcode')
-		parser.add_argument('-d', '--dark', help='enable dark mode', 	action='store_true')
+		parser.add_argument('file', type=argparse.FileType('r', encoding='UTF-8'))
+		parser.add_argument('-d', '--dark', help='enable dark mode', action='store_true')
+		parser.add_argument('-n', '--no-hud', action="store_false", dest='hud')
 		parser.add_argument('-b', '--bed-size', help='set bed size (e.g. 200x240)', type=parse_size_arg, default=(200,200))
+		parser.add_argument('--layer', default=0.5, help='')
 
-		args = parser.parse_args()
+		self.conf = parser.parse_args()
 
-		if args.dark:
+		print(self.conf)
+
+		if self.conf.dark:
 			colorMap['background'] = [ 0,0,0, 1 ]
 			colorMap['grid'] = [ 1,1,1, 0.1 ]
 			colorMap['text'] = [ 1,1,1, 0.7 ]
 
-		if args.bed_size:
-			self.conf['bed_size'] = args.bed_size
-			print(self.conf['bed_size'])
-
-		if args.path:
-			path = args.path
-		else:
+		path = self.conf.file.name
+		if len(path)==0:
+			# get the real path to the script
 			script_path = os.path.realpath(__file__)
 			script_dir = os.path.dirname(script_path)
 			path = os.path.join(script_dir, "data/hana_swimsuit_fv_solid_v1.gcode")
@@ -361,8 +361,8 @@ class App:
 		count = 0
 		grid_pos =[]
 		grid_col = []
-		sizex = self.conf['bed_size'][0]
-		sizey = self.conf['bed_size'][1]
+		sizex = self.conf.bed_size[0]
+		sizey = self.conf.bed_size[1]
 		for y in range(0,sizey+1):
 			count += 2
 			grid_pos.extend([0,y,0,  sizex,y,0])
@@ -708,29 +708,30 @@ class MyWindow(pyglet.window.Window):
 			glLineWidth(1)
 			for graphic in self.app.graphics_limbo[self.app.layerIdx+1:]:
 				graphic.draw(GL_LINES)
-		
-		# disable depth for HUD
-		glDisable(GL_DEPTH_TEST)
-		glDepthMask(0)
-		
-		# Set your camera up for 2d, draw 2d scene
-		
-		self.projection = Mat4.orthogonal_projection(0, self.width, 0, self.height, -1, 1)
-		self.view = Mat4()
-		
-		self.fpsLabel.text = "%d fps"%int(round(pyglet.clock.get_frequency()))
-		
-		for label in self.blLabels:
-			label.draw()
-		for label in self.brLabels:
-			label.draw()
-		for label in self.tlLabels:
-			label.draw()
-		for label in self.trLabels:
-			label.draw()
-		
-		# reenable depth for next model display
-		glEnable(GL_DEPTH_TEST)
-		glDepthMask(1)
+
+		if self.app.conf.hud:
+			# disable depth for HUD
+			glDisable(GL_DEPTH_TEST)
+			glDepthMask(0)
+			
+			# Set your camera up for 2d, draw 2d scene
+			
+			self.projection = Mat4.orthogonal_projection(0, self.width, 0, self.height, -1, 1)
+			self.view = Mat4()
+			
+			self.fpsLabel.text = "%d fps"%int(round(pyglet.clock.get_frequency()))
+			
+			for label in self.blLabels:
+				label.draw()
+			for label in self.brLabels:
+				label.draw()
+			for label in self.tlLabels:
+				label.draw()
+			for label in self.trLabels:
+				label.draw()
+			
+			# reenable depth for next model display
+			glEnable(GL_DEPTH_TEST)
+			glDepthMask(1)
 
 App().main()
