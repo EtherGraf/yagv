@@ -421,7 +421,10 @@ class GcodeModel:
 			# init distances and extrudate
 			layer.distance = 0
 			layer.extrudate = 0
-			
+			#layer.range = { }
+			#for k in ['X','Y','Z']: layer.range[k] = { }
+			layer.bbox = extend(layer.bbox, coords)
+
 			# for all segments
 			for seg in layer.segments:
 				# calc XYZ distance
@@ -445,7 +448,12 @@ class GcodeModel:
 					self.bbox = extend(self.bbox, coords)
 					# include end point
 					extend(self.bbox, coords)
-			
+
+				if seg.extrudate>0:				  
+					extend(layer.bbox, coords)   # -- layer bbox is only when extruding
+
+			layer.end = coords			
+
 			# accumulate total metrics
 			self.distance += layer.distance
 			self.extrudate += layer.extrudate
@@ -477,7 +485,8 @@ class Layer:
 		self.segments = []
 		self.distance = None
 		self.extrudate = None
-		
+		self.bbox = None
+
 	def __str__(self):
 		return "<Layer: Z=%f, len(segments)=%d, distance=%f, extrudate=%f>"%(self.Z, len(self.segments), self.distance, self.extrudate)
 		
