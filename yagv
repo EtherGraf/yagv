@@ -21,23 +21,81 @@ from gcodeParser import *
 import os.path
 import time
 
-colorMap = {
-	# Misc:
-	"background": [ 1,1,1, 1. ],
-	"grid": [ .2,.2,.2, 1. ],
-	"text": [ 0,0,0, 1. ],
+colorMaps = {
+	"light":
+		{
+			# Misc:
+			"background": [ 1,1,1, 1. ],
+			"grid": [ .2,.2,.2, 1. ],
+			"text": [ 0,0,0, 1. ],
 
-   # Gcode:
-	"extrude": [ 0.,.8,0. ],
-	"extrude_active": [ .8,0.,0. ],
-	"extrude_wall": [ .2,.9,0. ],
-	"extrude_wall_active": [ .8,.5,0. ],
-	"extrude_support": [ .8,.8,0. ],
-	"extrude_support_active": [ 1,.9,0. ],
-	"retract": [ .8,.8,0. ],
-	"unretract": [ .8,0.,.8 ],
-	"motion": [ 0.,0.,1. ]
+			# Gcode:
+			"extrude": [ 0.,.8,0. ],
+			"extrude_active": [ .8,0.,0. ],
+			"extrude_wall": [ .2,.9,0. ],
+			"extrude_wall_active": [ .8,.5,0. ],
+			"extrude_support": [ .8,.8,0. ],
+			"extrude_support_active": [ 1,.9,0. ],
+			"retract": [ .8,.8,0. ],
+			"unretract": [ .8,0.,.8 ],
+			"motion": [ 0.,0.,1. ]
+		},
+	"light_mono":
+		{
+			# Misc:
+			"background": [ 1,1,1, 1. ],
+			"grid": [ .2,.2,.2, 1. ],
+			"text": [ 0,0,0, 1. ],
+
+		   # Gcode:
+			"extrude": [ .6,.6,.6 ],
+			"extrude_active": [ .3,.3,.3 ],
+			"extrude_wall": [ .3,.3,.3 ],
+			"extrude_wall_active": [ .3,.3,.3 ],
+			"extrude_support": [ .6,.6,.6 ],
+			"extrude_support_active": [ 0.4,.4,0.4 ],
+			"retract": [ .9,.9,.9 ],
+			"unretract": [ .9,.9,.9 ],
+			"motion": [ .9,.9,.9 ]
+		},	"dark":
+		{
+			# Misc:
+			"background": [ 0,0,0, 1],
+			"grid": [ 1,1,1, 0.1 ],
+			"text": [ 1,1,1, 0.7 ],
+
+			# Gcode:
+			"extrude": [ 0.,.8,0. ],
+			"extrude_active": [ .8,0.,0. ],
+			"extrude_wall": [ .2,.9,0. ],
+			"extrude_wall_active": [ .8,.5,0. ],
+			"extrude_support": [ .8,.8,0. ],
+			"extrude_support_active": [ 1,.9,0. ],
+			"retract": [ .8,.8,0. ],
+			"unretract": [ .8,0.,.8 ],
+			"motion": [ 0.,0.,1. ]
+		},
+	"dark_mono":
+		{
+			# Misc:
+			"background": [ 0,0,0, 1],
+			"grid": [ 1,1,1, 0.1 ],
+			"text": [ 1,1,1, 0.7 ],
+
+			# Gcode:
+			"extrude": [ .7,.7,.7 ],
+			"extrude_active": [ .8,.8,0.8 ],
+			"extrude_wall": [ .7,.7,.7 ],
+			"extrude_wall_active": [ .8,.8,.8 ],
+			"extrude_support": [ .8,.8,.8 ],
+			"extrude_support_active": [ 0.7,.7,0.7 ],
+			"retract": [ .0,.0,.0 ],
+			"unretract": [ .0,.0,.0 ],
+			"motion": [ 0.,0.,0. ]
+		}
 }
+
+colorMap = colorMaps['light']
 
 def preg_match(rex,s,m,opts={}):
 	_m = re.search(rex,s)
@@ -108,18 +166,19 @@ class App:
 			epilog='Have fun!')
 		parser.add_argument('file', type=argparse.FileType('r', encoding='UTF-8'))
 		parser.add_argument('-d', '--dark', help='enable dark mode', action='store_true')
-		parser.add_argument('-n', '--no-hud', action="store_false", dest='hud')
+		parser.add_argument('-n', '--no-hud', help='no hud labels', action="store_false", dest='hud')
 		parser.add_argument('-b', '--bed-size', help='set bed size (e.g. 200x240)', type=parse_size_arg, default=(200,200))
-		parser.add_argument('-l', '--layer', type=float, default=0.5, help='')
+		parser.add_argument('-c', '--color', default='light', choices=['light', 'light_mono', 'dark', 'dark_mono'], help='Color style (default: %(default)s)')
+		parser.add_argument('-l', '--layer', type=float, default=0.5, help='starting layer (0.0 .. 1.0)')
 
 		self.conf = parser.parse_args()
 
 		print(self.conf)
 
 		if self.conf.dark:
-			colorMap['background'] = [ 0,0,0, 1 ]
-			colorMap['grid'] = [ 1,1,1, 0.1 ]
-			colorMap['text'] = [ 1,1,1, 0.7 ]
+			self.conf.color='dark'
+
+		colorMap.update(colorMaps[self.conf.color])
 
 		path = self.conf.file.name
 		if len(path)==0:
