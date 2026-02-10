@@ -110,7 +110,7 @@ class App:
 		parser.add_argument('-d', '--dark', help='enable dark mode', action='store_true')
 		parser.add_argument('-n', '--no-hud', action="store_false", dest='hud')
 		parser.add_argument('-b', '--bed-size', help='set bed size (e.g. 200x240)', type=parse_size_arg, default=(200,200))
-		parser.add_argument('--layer', default=0.5, help='')
+		parser.add_argument('-l', '--layer', type=float, default=0.5, help='')
 
 		self.conf = parser.parse_args()
 
@@ -144,7 +144,8 @@ class App:
 		self.load(path)
 
 		# default to the middle layer
-		self.layerIdx = len(self.model.layers)//2
+		startlayer = int(self.conf.layer * self.model.topLayer)
+		self.layerIdx = max(min(startlayer, self.model.topLayer), 0)
 		self.window.hud()
 
 		#img = pyglet.resource.image("icon.png")
